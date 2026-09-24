@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: assistit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: assistit
+      POSTGRES_PASSWORD: assistit_pwd
+      POSTGRES_DB: assistit_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./assistit_backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assistit -d assistit_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: pgsty/minio:latest
+    container_name: assistit-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: assistit_admin
+      MINIO_ROOT_PASSWORD: assistit_pwd_minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  backend:
+    build: ./assistit_backend
+    container_name: assistit-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://assistit:assistit_pwd@postgres:5432/assistit_db
+      JWT_SECRET: assistit_dev_secret_change_me
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: assistit_admin
+      MINIO_SECRET_KEY: assistit_pwd_minio
+      MINIO_PUBLIC_URL: http://192.168.1.4:9000
+    ports:
+      - "4000:4000"
+
+volumes:
+  pg_data:
+  minio_data:
