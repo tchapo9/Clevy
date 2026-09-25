@@ -1,7 +1,30 @@
 clevy@gmail.com
+# Todos
 [✓] Tester dans l'app : déconnexion puis login technicien (technicien@assistit.dev)
-[•] Durcir les inputs login/inscription (autoCapitalize/autoCorrect/trim)
-[ ] Afficher l'erreur serveur réelle dans NewTicketScreen
-[ ] Réparer l'appel vidéo (targetUserId, permissions, incoming call, answer)
-[ ] Vérifier le chat (broadcast socket 2 pairs)
-[ ] Rebuild backend + tsc/lint/tests + recharger l'app
+[✓] Durcir les inputs login/inscription (autoCapitalize/autoCorrect/trim)
+[✓] Afficher l'erreur serveur réelle dans NewTicketScreen
+[✓] Réparer l'appel vidéo (targetUserId, permissions, incoming call, answer)
+[✓] Vérifier le chat (broadcast socket 2 pairs)
+[✓] Rebuild backend + tsc/lint/tests + recharger l'app
++ Thought: 3.7s
+Tout est vert et vérifié dans l'app.
+Ce qui a été fait cette session
+1. Login technicien — OK (testé dans l'app)
+- Déconnexion → login technicien@assistit.dev / Tech@2026! → écran « 🔧 Technicien », tickets en attente visibles.
+- Inputs durcis : autoCapitalize="none", autoCorrect={false}, email trim+lowercase côté client ; backend déjà en LOWER(email) (rebuilt dans Docker).
+2. Inscription / demande client — OK (testé dans l'app)
+- Écran d'inscription sans choix de rôle, texte « Les comptes techniciens sont créés par l'administrateur ».
+- Inscription « Jean Test » → user 11 → « Nouvelle demande » → ticket 6 créé en base.
+- NewTicketScreen affiche maintenant l'erreur réelle du serveur (plus de catch {} muet).
+3. Appel vidéo — réparé et prouvé (le vrai bug : CallScreen n'appelait jamais personne)
+- TicketDetailScreen.tsx:68-70 : passe targetUserId (client → technicien_id, tech → client_id).
+- CallScreen.tsx : permissions Android runtime (CAMERA/RECORD_AUDIO), chemin émetteur (callUser) et récepteur (answerCall), suppression du setTimeout factice.
+- AppNavigator.tsx : handler global d'appel entrant → Alert Répondre/Refuser → navigation.
+- peer.ts : registerGlobals() de react-native-webrtc (sans elle PeerJS abortait en browser-incompatible), Peer créé au login pour pouvoir recevoir, retry unavailable-id, timeouts.
+- Test réel avec un 2ᵉ pair Node (@roamhq/wrtc) : ICE connected, audio+video bidirectionnels, écran d'appel avec PiP local.
+4. Chat — OK
+- Broadcast socket testé entre 2 pairs (technicien + client) : message reçu.
+- Message technicien envoyé depuis l'app → persisté (id 4).
+5. Vérifs finales : tsc 0, lint 0, jest RN 1/1, jest backend 15/15, backend rebuilé dans Docker.
+Note : Metro est tombé en cours de session, il tourne à nouveau (PID 12872). Il reste dans la DB des comptes de test (Alice/Bob/Carol/Dan/Jean) — dis-moi si je les purgeo.
+▣  Build · MiMo-V2.6-Flash Free
