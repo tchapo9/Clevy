@@ -35,9 +35,11 @@ const RegisterScreen = ({ navigation }: any) => {
         <TextInput style={styles.input} placeholder="Nom complet" placeholderTextColor="#666"
           value={nom} onChangeText={setNom} />
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#666"
-          value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          value={email} onChangeText={(t) => setEmail(t.trim().toLowerCase())} keyboardType="email-address"
+          autoCapitalize="none" autoCorrect={false} textContentType="username" />
         <TextInput style={styles.input} placeholder="Mot de passe" placeholderTextColor="#666"
-          value={password} onChangeText={setPassword} secureTextEntry />
+          value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none"
+          autoCorrect={false} textContentType="newPassword" />
 
         <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>S'inscrire</Text>}

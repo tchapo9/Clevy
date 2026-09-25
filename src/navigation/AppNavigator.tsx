@@ -1,8 +1,10 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import peerService from '../services/peer';
 
 // Écrans
 import LoginScreen from '../screens/LoginScreen';
@@ -75,8 +77,44 @@ const MainTabs = () => (
 );
 
 // ===== Root =====
+const navigationRef = createNavigationContainerRef<any>();
+
 const AppNavigator = () => {
   const { user, loading } = useAuth();
+
+  // Appels entrants : on demande a l'utilisateur de repondre
+  useEffect(() => {
+    if (!user) return;
+    peerService.onIncomingCall = (call: any) => {
+      const callType = call?.metadata?.callType || 'video';
+      Alert.alert(
+        'Appel entrant',
+        callType === 'audio' ? 'Appel audio' : 'Appel video',
+        [
+          {
+            text: 'Refuser',
+            style: 'cancel',
+            onPress: () => peerService.rejectIncomingCall(),
+          },
+          {
+            text: 'Repondre',
+            onPress: () => {
+              if (navigationRef.isReady()) {
+                navigationRef.navigate('Home', {
+                  screen: 'Call',
+                  params: { incoming: true, callType },
+                });
+              } else {
+                peerService.rejectIncomingCall();
+              }
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    };
+    return () => { peerService.onIncomingCall = null; };
+  }, [user]);
 
   if (loading) {
     return (
@@ -87,7 +125,7 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {user ? <MainTabs /> : <AuthStack />}
     </NavigationContainer>
   );

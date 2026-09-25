@@ -30,9 +30,11 @@ const LoginScreen = ({ navigation }: any) => {
         <Text style={styles.subtitle}>Assistance Informatique</Text>
 
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#666"
-          value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          value={email} onChangeText={(t) => setEmail(t.trim().toLowerCase())} keyboardType="email-address"
+          autoCapitalize="none" autoCorrect={false} textContentType="username" />
         <TextInput style={styles.input} placeholder="Mot de passe" placeholderTextColor="#666"
-          value={password} onChangeText={setPassword} secureTextEntry />
+          value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none"
+          autoCorrect={false} textContentType="password" />
 
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Se connecter</Text>}

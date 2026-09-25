@@ -1,0 +1,7 @@
+clevy@gmail.com
+[✓] Tester dans l'app : déconnexion puis login technicien (technicien@assistit.dev)
+[•] Durcir les inputs login/inscription (autoCapitalize/autoCorrect/trim)
+[ ] Afficher l'erreur serveur réelle dans NewTicketScreen
+[ ] Réparer l'appel vidéo (targetUserId, permissions, incoming call, answer)
+[ ] Vérifier le chat (broadcast socket 2 pairs)
+[ ] Rebuild backend + tsc/lint/tests + recharger l'app

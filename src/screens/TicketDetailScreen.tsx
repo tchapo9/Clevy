@@ -66,7 +66,8 @@ const TicketDetailScreen = ({ route, navigation }: any) => {
   if (!ticket) return null;
 
   const isTechnicien = user?.role === 'technicien';
-  const canCall = ticket.status === 'en_cours';
+  const targetUserId = isTechnicien ? ticket.client_id : ticket.technicien_id;
+  const canCall = ticket.status === 'en_cours' && !!targetUserId;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -95,7 +96,9 @@ const TicketDetailScreen = ({ route, navigation }: any) => {
 
         {canCall && (
           <TouchableOpacity style={[styles.actionBtn, styles.btnCall]}
-            onPress={() => navigation.navigate('Call', { ticketId: ticket.id, callType: 'video' })}>
+            onPress={() => navigation.navigate('Call', {
+              ticketId: ticket.id, callType: 'video', targetUserId,
+            })}>
             <Icon name="video" size={20} color="#fff" />
             <Text style={styles.actionText}>Appel vidéo</Text>
           </TouchableOpacity>

@@ -21,8 +21,12 @@ const NewTicketScreen = ({ navigation }: any) => {
     try {
       await ticketsAPI.create({ categorie, description: description.trim() });
       Alert.alert('Succès', 'Demande envoyée !', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-    } catch {
-      Alert.alert('Erreur', "Impossible de créer la demande");
+    } catch (e: any) {
+      const msg = e?.response?.data?.error
+        || (e?.code === 'ECONNABORTED' ? 'Serveur injoignable (timeout)' : null)
+        || (e?.message === 'Network Error' ? 'Pas de connexion au serveur' : null)
+        || 'Impossible de créer la demande';
+      Alert.alert('Erreur', msg);
     } finally {
       setLoading(false);
     }

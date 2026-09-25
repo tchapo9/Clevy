@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, Platform, Alert, PermissionsAndroid,
+} from 'react-native';
 import { RTCView } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import peerService from '../services/peer';
 
 const CallScreen = ({ route, navigation }: any) => {
-  const { callType = 'video' } = route.params;
+  const { callType = 'video', targetUserId, incoming = false } = route.params || {};
   const [status, setStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [duration, setDuration] = useState(0);
   const [localStream, setLocalStream] = useState<any>(null);
@@ -13,28 +15,62 @@ const CallScreen = ({ route, navigation }: any) => {
   const [muted, setMuted] = useState(false);
   const [videoOn, setVideoOn] = useState(callType === 'video');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<any>(null);
 
   const cleanup = () => {
-    localStream?.getTracks().forEach((t: any) => t.stop());
+    streamRef.current?.getTracks?.().forEach((t: any) => t.stop());
+    streamRef.current = null;
     peerService.endCall();
+  };
+
+  const fail = (message: string) => {
+    cleanup();
+    Alert.alert('Appel', message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+  };
+
+  const askPermissions = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+    const needed = [PermissionsAndroid.PERMISSIONS.CAMERA, PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
+    const already = await PermissionsAndroid.check(needed[0]) && await PermissionsAndroid.check(needed[1]);
+    if (already) return true;
+    const res = await PermissionsAndroid.requestMultiple(needed);
+    return needed.every((p) => res[p] === PermissionsAndroid.RESULTS.GRANTED);
   };
 
   const init = async () => {
     try {
+      const ok = await askPermissions();
+      if (!ok) {
+        fail("Autorisations caméra/micro refusees");
+        return;
+      }
+
       const stream = await peerService.getLocalStream(callType === 'video', true);
+      streamRef.current = stream;
       setLocalStream(stream);
 
-      peerService.onIncomingCall = async (call: any) => {
+      if (incoming) {
+        const call = peerService.takeIncomingCall();
+        if (!call) {
+          fail("Appel deja termine");
+          return;
+        }
         const remote = await peerService.answerCall(call, stream);
         setRemoteStream(remote);
         setStatus('connected');
-      };
+        return;
+      }
 
-      // Auto-connect si on est le client (pas de targetUserId ici, on utilise le socket)
-      setTimeout(() => setStatus('connected'), 2000);
-    } catch {
-      Alert.alert('Erreur', "Caméra/micro non disponible");
-      navigation.goBack();
+      if (!targetUserId) {
+        fail("Destinataire inconnu");
+        return;
+      }
+
+      const remote = await peerService.callUser(targetUserId, stream, callType);
+      setRemoteStream(remote);
+      setStatus('connected');
+    } catch (e: any) {
+      fail(e?.message || "Appel impossible");
     }
   };
 
@@ -57,12 +93,14 @@ const CallScreen = ({ route, navigation }: any) => {
   };
 
   const toggleMute = () => {
-    localStream?.getAudioTracks()[0] && (localStream.getAudioTracks()[0].enabled = !muted);
+    const track = localStream?.getAudioTracks?.()[0];
+    if (track) track.enabled = muted;
     setMuted(!muted);
   };
 
   const toggleVideo = () => {
-    localStream?.getVideoTracks()[0] && (localStream.getVideoTracks()[0].enabled = !videoOn);
+    const track = localStream?.getVideoTracks?.()[0];
+    if (track) track.enabled = !videoOn;
     setVideoOn(!videoOn);
   };
 
@@ -75,8 +113,12 @@ const CallScreen = ({ route, navigation }: any) => {
           <RTCView streamURL={remoteStream.toURL()} style={styles.video} objectFit="cover" />
         ) : (
           <View style={styles.waiting}>
-            <Icon name="phone" size={60} color="#e94560" />
-            <Text style={styles.waitingText}>{status === 'connecting' ? 'Connexion...' : 'Appel terminé'}</Text>
+            <Icon name={status === 'ended' ? 'phone-hangup' : 'phone'} size={60} color="#e94560" />
+            <Text style={styles.waitingText}>
+              {status === 'connecting'
+                ? (incoming ? 'Reception de l\'appel...' : 'Appel en cours...')
+                : 'Appel termine'}
+            </Text>
             {status === 'connected' && <Text style={styles.timer}>{fmt(duration)}</Text>}
           </View>
         )}
@@ -110,7 +152,7 @@ const styles = StyleSheet.create({
   remote: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a2e' },
   video: { width: '100%', height: '100%' },
   waiting: { alignItems: 'center' },
-  waitingText: { color: '#fff', fontSize: 18, marginTop: 15 },
+  waitingText: { color: '#fff', fontSize: 18, marginTop: 15, paddingHorizontal: 30, textAlign: 'center' },
   timer: { color: '#888', fontSize: 14, marginTop: 8 },
   pip: { position: 'absolute', top: Platform.OS === 'ios' ? 55 : 35, right: 15, width: 110, height: 150, borderRadius: 10, overflow: 'hidden', borderWidth: 2, borderColor: '#fff' },
   controls: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingVertical: 35, paddingBottom: Platform.OS === 'ios' ? 55 : 35, backgroundColor: 'rgba(0,0,0,0.8)' },
